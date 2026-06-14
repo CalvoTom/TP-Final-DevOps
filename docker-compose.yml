@@ -35,6 +35,7 @@ services:
 
   api:
     build: ./api
+    image: shoplite-api
     container_name: shoplite_api
     env_file:
       - path: .env
