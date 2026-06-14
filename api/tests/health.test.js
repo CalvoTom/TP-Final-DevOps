@@ -1,9 +1,36 @@
 const request = require("supertest");
+
+jest.mock("../src/db");
+const db = require("../src/db");
 const app = require("../src/app");
 
-test("GET / retourne le nom de l'API", async () => {
-  const response = await request(app).get("/");
+describe("GET /", () => {
+  test("retourne le nom de l'API", async () => {
+    const response = await request(app).get("/");
 
-  expect(response.status).toBe(200);
-  expect(response.body.name).toBe("ShopLite API");
+    expect(response.status).toBe(200);
+    expect(response.body.name).toBe("ShopLite API");
+  });
+});
+
+describe("GET /health", () => {
+  test("retourne 200 quand la base repond", async () => {
+    db.query.mockResolvedValueOnce({ rows: [{ value: 1 }] });
+
+    const response = await request(app).get("/health");
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe("ok");
+    expect(response.body.checks.database).toBe("ok");
+  });
+
+  test("retourne 503 quand la base est injoignable", async () => {
+    db.query.mockRejectedValueOnce(new Error("connexion impossible"));
+
+    const response = await request(app).get("/health");
+
+    expect(response.status).toBe(503);
+    expect(response.body.status).toBe("error");
+    expect(response.body.checks.database).toBe("error");
+  });
 });
