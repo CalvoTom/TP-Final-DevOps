@@ -1,3 +1,12 @@
+# Etape build: installation des dependances de production
+FROM node:20-alpine AS build
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+# Etape runtime: image finale minimale
 FROM node:20-alpine
 
 WORKDIR /app
@@ -5,9 +14,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV API_PORT=3000
 
+COPY --from=build /app/node_modules ./node_modules
 COPY package*.json ./
-RUN npm ci --omit=dev
-
 COPY src ./src
 
 USER node
