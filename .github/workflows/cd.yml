@@ -1,13 +1,78 @@
-name: CD starter a completer
+name: CD
 
 on:
+  push:
+    branches: [dev]
+    tags: ["v*"]
   workflow_dispatch:
 
 jobs:
-  consigne:
+  deploy-staging:
+    name: Deploiement staging
+    if: github.ref == 'refs/heads/dev' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - name: Consigne
+      - uses: actions/checkout@v4
+
+      - name: Demarrer la stack staging
+        run: docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build
+
+      - name: Attendre que l'API soit prete
         run: |
-          echo "Ce workflow est volontairement minimal."
-          echo "Les etudiants doivent ajouter staging, production simulee, smoke test et rollback."
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8081/api/health >/dev/null 2>&1; then
+              echo "API staging prete"
+              exit 0
+            fi
+            echo "Attente de l'API staging ($i)..."
+            sleep 5
+          done
+          echo "API staging indisponible"
+          exit 1
+
+      - name: Smoke test staging
+        env:
+          BASE_URL: http://localhost:8081
+        run: sh scripts/smoke-test.sh
+
+      - name: Arret de la stack staging
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.staging.yml down
+
+  deploy-production:
+    name: Deploiement production simule
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    # Bloc I: configurer ici un GitHub Environment "production" avec validation
+    # manuelle (required reviewers) pour exiger une approbation avant la prod.
+    # environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version deployee
+        run: echo "Deploiement production de la version ${{ github.ref_name }}"
+
+      - name: Demarrer la stack production simulee
+        run: docker compose up -d --build
+
+      - name: Attendre que l'API soit prete
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/api/health >/dev/null 2>&1; then
+              echo "API production prete"
+              exit 0
+            fi
+            echo "Attente de l'API production ($i)..."
+            sleep 5
+          done
+          echo "API production indisponible"
+          exit 1
+
+      - name: Smoke test production
+        env:
+          BASE_URL: http://localhost:8080
+        run: sh scripts/smoke-test.sh
+
+      - name: Arret de la stack
+        if: always()
+        run: docker compose down
