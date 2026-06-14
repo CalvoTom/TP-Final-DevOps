@@ -22,6 +22,9 @@ describe("GET /health", () => {
     expect(response.status).toBe(200);
     expect(response.body.status).toBe("ok");
     expect(response.body.checks.database).toBe("ok");
+    expect(response.body.version).toBeDefined();
+    expect(response.body.timestamp).toBeDefined();
+    expect(response.headers["x-request-id"]).toBeDefined();
   });
 
   test("retourne 503 quand la base est injoignable", async () => {
