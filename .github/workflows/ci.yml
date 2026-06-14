@@ -1,13 +1,96 @@
-name: CI starter a completer
+name: CI
 
 on:
+  push:
+    branches: [dev, main]
+  pull_request:
   workflow_dispatch:
 
+defaults:
+  run:
+    working-directory: api
+
 jobs:
-  consigne:
+  quality:
+    name: Lint et format
     runs-on: ubuntu-latest
     steps:
-      - name: Consigne
-        run: |
-          echo "Ce workflow est volontairement minimal."
-          echo "Les etudiants doivent ajouter push, pull_request, npm ci, npm test, npm audit, npm outdated et docker compose build."
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+
+  test:
+    name: Tests Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ["18", "20"]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: shoplite
+          POSTGRES_USER: shoplite
+          POSTGRES_PASSWORD: shoplite_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U shoplite -d shoplite"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://shoplite:shoplite_password@localhost:5432/shoplite
+      RUN_DB_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+      - name: Charger le jeu de donnees PostgreSQL
+        working-directory: ${{ github.workspace }}
+        env:
+          PGPASSWORD: shoplite_password
+        run: psql -h localhost -U shoplite -d shoplite -f database/init.sql
+      - run: npm test
+      - name: Publier le rapport de couverture
+        if: matrix.node == '20'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: api/coverage
+
+  security:
+    name: Audit dependances
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+      - name: Audit npm
+        run: npm audit --omit=dev || true
+      - name: Dependances obsoletes
+        run: npm outdated || true
+
+  build:
+    name: Build images Docker
+    runs-on: ubuntu-latest
+    needs: [quality, test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build des images
+        working-directory: ${{ github.workspace }}
+        run: docker compose build
