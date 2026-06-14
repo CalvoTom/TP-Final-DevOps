@@ -1,76 +1,104 @@
-# ShopLite - Starter TP final DevOps
+# ShopLite
 
 [![CI](https://github.com/CalvoTom/TP-Final-DevOps/actions/workflows/ci.yml/badge.svg)](https://github.com/CalvoTom/TP-Final-DevOps/actions/workflows/ci.yml)
+[![CD](https://github.com/CalvoTom/TP-Final-DevOps/actions/workflows/cd.yml/badge.svg)](https://github.com/CalvoTom/TP-Final-DevOps/actions/workflows/cd.yml)
 
-ShopLite est un projet de base pour un TP final DevOps.
+API e-commerce minimaliste en Node.js / Express avec PostgreSQL, deployee via
+Docker Compose et GitHub Actions.
 
-Les etudiants recoivent uniquement ce socle applicatif :
+## Demarrage rapide
 
-- API Node.js / Express
-- Frontend HTML / CSS / JS
-- Script SQL PostgreSQL
-- Un test de sante minimal
-- Une configuration Docker minimale pour lancer le projet
+### Prerequis
 
-Le travail du TP consiste a construire progressivement :
+- Docker >= 24 et Docker Compose v2
+- Node.js >= 18 (pour le developpement local uniquement)
 
-- Git propre et strategie de branches
-- Ameliorer les Dockerfile API et frontend
-- Ameliorer docker-compose dev / staging / prod
-- CI/CD GitHub Actions
-- tests automatises
-- logs propres
-- securite container
-- backup PostgreSQL
-- rollback sans perte de donnees
-- documentation professionnelle
+### Environnement de developpement
 
-## Lancement rapide avec Docker
-
-```bash
+```sh
+cp .env.example .env          # adapter les valeurs si besoin
 docker compose up -d --build
 ```
 
-Ouvrir :
+Verifier que la stack est operationnelle :
 
-```text
-http://localhost:8080
-```
-
-Tester :
-
-```bash
+```sh
 curl http://localhost:8080/api/health
 curl http://localhost:8080/api/products
 ```
 
-Arreter sans supprimer les donnees :
+Frontend : [http://localhost:8080](http://localhost:8080)
 
-```bash
-docker compose down
+### Environnement de staging
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build
 ```
 
-## Lancement hors Docker pour prise en main
+Stack disponible sur le port `8081`.
 
-```bash
+### Arreter la stack
+
+```sh
+docker compose down          # conserve les donnees (volume pgdata)
+docker compose down -v       # supprime egalement le volume
+```
+
+## Endpoints API
+
+| Methode | Route | Description |
+|---------|-------|-------------|
+| GET | `/` | Informations et version de l'API |
+| GET | `/api/health` | Liveness probe (etat DB inclus) |
+| GET | `/api/ready` | Readiness probe |
+| GET | `/api/products` | Liste des produits |
+
+## Tests et qualite
+
+```sh
 cd api
-npm install
-npm test
-npm start
+npm ci
+npm run lint          # ESLint
+npm run format:check  # Prettier
+npm test              # Jest (couverture >= 80 %)
 ```
 
-API :
+## CI/CD
 
-```text
-http://localhost:3000/health
-http://localhost:3000/products
-```
+Le pipeline GitHub Actions comporte deux workflows :
 
-Frontend :
+**CI** (sur chaque push et PR) :
+- `quality` : lint ESLint + format Prettier
+- `test` : tests Jest sur Node 18 et 20 avec PostgreSQL reel
+- `security` : npm audit + npm outdated
+- `trivy` : scan des vulnerabilites de l'image Docker (CRITICAL bloquant)
+- `build` : build des images Docker
 
-Ouvrir `frontend/src/index.html` dans un navigateur ou le servir avec un serveur statique.
+**CD** (sur push `dev` et tag `v*`) :
+- `deploy-staging` : stack staging + smoke test automatique
+- `deploy-production` : deploiement sur tag `v*`, approbation manuelle requise (GitHub Environment)
 
-## Important
+## Scripts operationnels
 
-Le projet contient maintenant le minimum pour tourner avec Docker.
-Les etudiants doivent l'ameliorer pendant le TP pour atteindre les exigences finales.
+| Script | Usage |
+|--------|-------|
+| `sh scripts/build-images.sh <version>` | Construire et taguer les images |
+| `sh scripts/backup.sh` | Sauvegarde pg_dump avec retention 7 jours |
+| `sh scripts/restore-test.sh [fichier]` | Test de restauration en base temporaire |
+| `sh scripts/rollback.sh <version>` | Rollback vers une image stable versionnee |
+| `sh scripts/smoke-test.sh` | Smoke test `/health` et `/products` |
+
+## Documentation
+
+| Document | Contenu |
+|----------|---------|
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Branches, commits conventionnels, PR |
+| [CHANGELOG.md](CHANGELOG.md) | Historique des versions |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Schemas d'architecture (Mermaid) |
+| [docs/DEPLOYMENTS.md](docs/DEPLOYMENTS.md) | Journal des deploiements |
+| [docs/INCIDENT.md](docs/INCIDENT.md) | Rapport d'incident INC-001 |
+| [docs/SECURITY.md](docs/SECURITY.md) | Checklist et classement des risques |
+| [docs/SECRETS.md](docs/SECRETS.md) | Hygiene des secrets et configuration |
+| [docs/REGISTRY.md](docs/REGISTRY.md) | Images Docker, tags et registry |
+| [docs/DORA.md](docs/DORA.md) | Indicateurs DORA |
+| [docs/RACI.md](docs/RACI.md) | Matrice de responsabilites |
