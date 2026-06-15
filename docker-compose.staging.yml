@@ -1,8 +1,20 @@
+# Override staging: noms, port et variables propres a l'environnement de staging
+# Lancement:
+#   docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build
 services:
+  db:
+    container_name: shoplite_db_staging
+
   api:
+    container_name: shoplite_api_staging
     environment:
-      APP_VERSION: staging-starter
+      APP_VERSION: ${APP_VERSION:-staging}
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+
+  frontend:
+    container_name: shoplite_frontend_staging
 
   proxy:
+    container_name: shoplite_proxy_staging
     ports:
-      - "8081:80"
+      - "${HTTP_PORT_STAGING:-8081}:80"

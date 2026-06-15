@@ -1,7 +1,17 @@
+# Configuration logging reutilisable: rotation pour limiter la taille des logs Docker
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   db:
     image: postgres:16-alpine
     container_name: shoplite_db
+    env_file:
+      - path: .env
+        required: false
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-shoplite}
       POSTGRES_USER: ${POSTGRES_USER:-shoplite}
@@ -14,12 +24,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
     networks:
       - shoplite_net
 
   api:
     build: ./api
+    image: shoplite-api
     container_name: shoplite_api
+    env_file:
+      - path: .env
+        required: false
     environment:
       API_PORT: 3000
       DATABASE_URL: postgres://${POSTGRES_USER:-shoplite}:${POSTGRES_PASSWORD:-shoplite_password}@db:5432/${POSTGRES_DB:-shoplite}
@@ -28,12 +48,24 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
     networks:
       - shoplite_net
 
   frontend:
     build: ./frontend
     container_name: shoplite_frontend
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
     networks:
       - shoplite_net
 
@@ -47,6 +79,12 @@ services:
     depends_on:
       - api
       - frontend
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
     networks:
       - shoplite_net
 
