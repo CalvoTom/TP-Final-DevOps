@@ -35,6 +35,18 @@ jobs:
           BASE_URL: http://localhost:8081
         run: sh scripts/smoke-test.sh
 
+      - name: Journal de deploiement
+        run: |
+          echo "## Deploiement staging - ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Champ | Valeur |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Ref | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Acteur | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Date UTC | $(date -u +%Y-%m-%dT%H:%M:%SZ) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Statut | succes |" >> $GITHUB_STEP_SUMMARY
+
       - name: Arret de la stack staging
         if: always()
         run: docker compose -f docker-compose.yml -f docker-compose.staging.yml down
@@ -43,9 +55,9 @@ jobs:
     name: Deploiement production simule
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    # Bloc I: configurer ici un GitHub Environment "production" avec validation
-    # manuelle (required reviewers) pour exiger une approbation avant la prod.
-    # environment: production
+    # Bloc I: environment "production" configure dans GitHub Settings > Environments
+    # avec au moins un "required reviewer" pour exiger une approbation manuelle.
+    environment: production
     steps:
       - uses: actions/checkout@v4
 
@@ -72,6 +84,18 @@ jobs:
         env:
           BASE_URL: http://localhost:8080
         run: sh scripts/smoke-test.sh
+
+      - name: Journal de deploiement
+        run: |
+          echo "## Deploiement production - ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Champ | Valeur |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Acteur | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Date UTC | $(date -u +%Y-%m-%dT%H:%M:%SZ) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Statut | succes |" >> $GITHUB_STEP_SUMMARY
 
       - name: Arret de la stack
         if: always()
