@@ -107,7 +107,7 @@ jobs:
         run: docker build -t shoplite-api:scan ./api
 
       - name: Scan CRITICAL bloquant (vulnerabilites corrigeables uniquement)
-        uses: aquasecurity/trivy-action@0.20.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: shoplite-api:scan
           format: table
@@ -116,7 +116,7 @@ jobs:
           severity: CRITICAL
 
       - name: Rapport HIGH et MEDIUM informatif
-        uses: aquasecurity/trivy-action@0.20.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: shoplite-api:scan
           format: table
